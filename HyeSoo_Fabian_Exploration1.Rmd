@@ -1,3 +1,5 @@
+#commented by Hye Soo Nah and Fabian Prieto
+
 ---
 title: 'Exploration 1: Description in One Dimension'
 author: "Jake Bowers"
