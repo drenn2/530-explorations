@@ -1,0 +1,212 @@
+---
+title: 'Exploration 5: Engaging with Alternative Explanations with Randomized Experiments'
+author: 'Jake Bowers'
+date: '`r format(Sys.Date(), "%B %d, %Y")`'
+bibliography: classbib.bib
+fontsize: 10pt
+geometry: margin=1in
+mainfont: "Crimson Text"
+graphics: yes
+output:
+  html_document:
+    fig_caption: yes
+    fig_height: 4
+    fig_width: 4
+  pdf_document:
+    latex_engine: xelatex
+    fig_caption: yes
+    fig_height: 4
+    fig_width: 4
+---
+
+<!-- Make this document using library(rmarkdown); render("exploration1.Rmd") -->
+\input{mytexsymbols}
+
+
+```{r include=FALSE, cache=FALSE}
+# Some customization.  You can alter or delete as desired (if you know what you are doing).
+# knitr settings to control how R chunks work.
+
+## To make the html file do
+## render("exploration1.Rmd",output_format=html_document(fig_retina=FALSE))
+## To make the pdf file do
+## render("exploration1.Rmd",output_format=pdf_document())
+
+require(knitr)
+opts_chunk$set(
+  tidy=FALSE,     # display code as typed
+  size="small",    # slightly smaller font for code
+  echo=TRUE,
+  results='markup',
+  strip.white=TRUE,
+  fig.path='figs/fig',
+  cache=FALSE,
+  highlight=TRUE,
+  width.cutoff=132,
+  size='footnotesize',
+  out.width='.9\\textwidth',
+  fig.retina=FALSE,
+  message=FALSE,
+  comment=NA)
+```
+
+
+```{r initialize,echo=FALSE}
+##First, just setup the R environment for today:
+if(!file.exists('figs')) dir.create('figs')
+
+options(SweaveHooks=list(fig=function(){
+			   par(mar=c(3.5, 3, 1.1, 0),
+			       pty="s",
+			       mgp=c(1.5,0.5,0),
+			       oma=c(0,0,0,0))},
+			 echo=function(){options(continue=" ") ##Don't show "+" prompts,
+			 options(prompt=" ")
+			 }),
+	digits=4,
+	scipen=8,
+	width=132
+	)
+options(error=function(){options(prompt="> ",continue="+ ");NULL})
+```
+
+With the election coming up, you receive a new request for adjudication of a
+causal claim: "I believe that we should have rallies and promise targeted goods
+to towns, in this way I can most strongly encourage people to turn out to vote
+(citing Gerber and Green on election day parties), and will increase the civic
+health of our nation!" 
+
+Another candidate says, "This is bad for public goods
+provision, shouldn't we meet and debate rationally about how I will act once I
+am president? These parties and promises sound almost like bribery and this
+cannot be good for the health of democracy let alone effective economic
+policies."
+
+You have the chance to answer this question using data from an experiment
+conducted in Benin (see the materials in
+<http://jakebowers.org/Data/FujiwaraWantchekon2013>).
+
+```{r datasetup, cache=TRUE}
+library(readstata13)
+surveydat<-read.dta13("http://www.jakebowers.org/Data/FujiwaraWantchekon2013/20110167_data/survey_data_AEJ.dta",convert.factors=FALSE)
+electdat<-read.dta13("http://www.jakebowers.org/Data/FujiwaraWantchekon2013/20110167_data/AEJ_elec_data.dta",convert.factors=FALSE)
+```
+
+You show how the proportion of people who say that they receive cash from the campaign was reduced in the treated villages:
+
+```{r}
+library (dplyr)
+## Check the design: table(surveydat$depcom,surveydat$treat)
+surveydat %>% group_by(treat) %>% summarize(cash=mean(cash))
+## or with(surveydat, tapply(cash,treat,mean))
+surveydat %>% group_by(treat) %>% summarize(index=mean(index))
+electdat %>% group_by(treat) %>% summarize(mean(participation))
+```
+
+Just as you show the same thing about voter participation using the
+electoral data, but the candidates start bickering again.
+
+"You can't just show us those numbers! Where are the control variables?
+
+you can create a control group by 
+
+Control variables are reduced by selecting 
+
+Shouldn't you only be comparing villages that are identical with each other?
+I bet at least one covariate, measured or unmeasured, is imbalanced with respect
+to the randomization, so you can see that randomization is not at all special.
+
+I bet that candidates had town hall meetings rather than rallies in villages
+where they knew that they were not going to give out much cash/where they knew
+that clientelistic responses would not gain that much traction. 
+
+You probably just told the candidates to hold the town hall meetings where clientelistic
+practices would not have done them much good. You are just anti-clientelist! 
+
+I know that you rigged this comparison! The so called control villages don't
+really reflect how the treated villages would have behaved without rallies."
+(You can't really tell who is asking which question.) 
+
+```{r}
+
+# In this scenario, we see two different approaches concerning the "right" way to campaign in an election. The first approach supports clientelism, arguing that democratic campaigns are only feasible in countries with a sufficiently high level of economic development. The second approach refutes this argument by showing data collected from Fujiwara and Wantchekon's 2013 study. In this study, the "treatment" of randomly selected Beninese villages with campaigns utilizing town-hall debates had a negative effect on self-reported measures of clientelism yet no significant effect on voter participation. In other words, despite Benin not having sufficient economic development, a democratic approach in election campaigns turned out to be just as effective in mobilizing voter turnout. To this, proponents of the clientelistic approach express skepticism by saying that Fujiwara and Wantchekon's study did not sufficiently control for any variables that may have influenced self-reported clientelism and voter turnout. They further question the procedure concerning experimental candidates’ selection of villages for the treatment campaign. 
+
+# If one were to claim that the treatment of a democratic-style campaign had an effect on self-reported measures of clientelism and voter turnout, the ' treatment effect' here would be the difference between clientelism/turnout in two different worlds: One where the Beninese villages receive the treatment and one where they do not. Unfortunately, it is impossible to create a separate counterfactual world where the same exact villages do not receive any treatment at all, which leads to the problem of "missing data." Therefore, we need to finds ways to create an approximation of this counterfactual world. 
+
+#To solve this "missing data" problem in last week's scenario of age and Trump support, we controlled for possible variables that may influence the effect of age on Trump support (political knowledge, ethnicity and ideology) and compared the effect size among people who were more or less similar to each other in terms of these variables. The reason for doing so was because we cannot randomly assign people to be of a certain age or age group for the purposes of comparing the effect size of age between a controlled and treated group. Therefore, we had to "control" for different levels of ideology and political knowledge, as well as different subcategories of ethnicity and then see if age had had any effect on Trump support. 
+
+#However, Fujiwara and Wantchekon's study is a field experiment, where it is actually possible to randomly assign villages to either a control group or a treatment group. Here, the control group serves as the counterfactual - a "proxy for the outcome that would have been observed for individuals in the treatment group if the treatment had not been applied to them" as explained by Gerber and Green (p. 7) - thereby solving the issue of missing data. 
+
+#But proponents of the clientelistic approach are still skeptical about this whole "randomization" process. They point out that there were no control variables in Fujiwara and Wantchekon's field experiment; without using any control variables, how can we say that the treatment and control villages were similar enough to each other to warrant fair comparison? 
+
+#Gerber and Green (2012) explain that "random assignment satisfies the independence assumption, and the independence assumption suggests a way to generate empirical estimates of average treatment effects (p. 8)." Here, the independence assumption means that the potential outcome of treatment villages is independent from a randomly assigned value of treatment or non-treatment. That is, regardless of whether these villages get assigned to the treatment or not, the potential outcomes of treatment villages are the same as the average potential outcomes among all villages because treatment villages are merely a random sample of all villages. If this is the case, it should be fair to compare the outcomes between treatment and control villages since neither group will have a higher set of potential outcomes than the other. 
+
+#Randomization of treatment further implies that any variable measured prior to the administration of the treatment are also presumably independent of randomly assigned treatment groups (p. 8). For instance, one cannot argue that age may have influenced self-reported measures of clientelism and voter turnout because randomization assures that any combination of treatment and control villages will likely yield similar averages in terms of age. Gerber and Green refer to this property as 'covariate balance,' saying that it is possible to gauge the degree of balance empirically by comparing the sample averages for the treatment and control groups. To see if we can actually say that covariates such as age and education level were similar between control and treatment villages, we ran the following codes in R: 
+
+surveydat %>% group_by(treat) %>% summarize(age=mean(age))
+surveydat %>% group_by(treat) %>% summarize(primary_schooling=mean(primary_schooling))
+surveydat %>% group_by(treat) %>% summarize(secondary_schooling_or_more=mean(secondary_schooling_or_more))
+surveydat %>% group_by(treat) %>% summarize(reg_income=mean(reg_income))
+surveydat %>% group_by(treat) %>% summarize(member=mean(member))
+
+
+#Overall, these covariates did not seem to vary much between treatment and control villages. However, proponents of the clientelistic approach point out a different covariate, one that has not been measured in this study. According to these people, experimental candidates could have just chosen villages where clientelistic practices would not have done them much good in the first place. If this is the case, we could potentially have an imbalance in one or more unmeasured variable(s), namely, each village’s clientelism index prior to the experiment, as well as the vote share of each candidate prior to the experiment. 
+
+#Concerning the issue of imbalanced covariates, Gerber and Green suggest using either pre-experiment or post-experiment stratification. Essentially, we would examine each experimental candidate’s list of villages, divide these villages into either ‘favorable/clientelism-effective’ or ‘unfavorable/clientelism-ineffective’ groups, and then randomly assign a certain fraction of each group to the treatment condition. Or alternatively, we would include the covariates as control variables in a multivariate model. Unfortunately, we do not have data concerning these unmeasured covariates. In their study, Fujiwara and Wantchekon used stratified randomization based on geography, which according to them “guarantees a perfect balance regarding any characteristic that varies only at the commune level (p. 245).”
+
+```
+
+
+How can you respond so that these candidates believe that you are making an interpretable comparison?
+
+```{r}
+
+# The underlying question here appears to be whether any can perfectly capture what might have happened in all scenarios.  Experiments are actually quite poor indicators of counterfactuals because they require manipulation of the environment.  This is not a weakness, however, as experiments move you out of the realm of thought exercise into having actual causal control of the system.  As was stated in Kinder and Palfrey “Experiments intrude upon nature, and the do so (almost always) to provide answers to causal questions”(p. 6).  So how do we determine the validity of the results. First we test for significance which the paper has already done following established guidelines for appropriate p values. This confirms that our results are real.  The next part, however, is harder.  We have to determine what the results mean and make sure we are not introducing bias into our interpretations.  The candidates are wise to be cautious of a result that upends the social order.   Since we are accused of being anti-clientelistic (which, to be fully honest, we are), the candidates should look to see if any of our results support pro-clientelistic position.  For if we were so biased as the candidates fear, why would we support such a position?  Are results do in fact support a pro-clientelistic position.  When candidates conducted a treatment within their own stronghold, there was a decrease in their voter share.  If candidates want to spin the results in favor of the status quo, this the angle to use.  Informing voters within your stronghold instead of distributing gifts only weakens your position.  This was determined by comparing treatment and control areas that were both within the same candidates stronghold suggesting similar demographics and areas that had similar clientelistic behavior in the past.  While the treatment areas were not randomly assigned, since they and the controls were both within the same candidates stronghold, we can make assumptions about the similarities in samples. 
+
+#However, politicians most likely need to win more than just their strongholds to make it into the runoff.  Here the candidates need to determine whether they can use the other results despite maintaining pro-clientelistic beliefs.  I think a savvy candidate will see the benefit of these results.  The can keep the offering the gifts to supporters in the strongholds, but also gain vote share elsewhere for cheaper.  This is particularly important for the candidates without the expected largest voter share.  If they can hold their own areas with gifts and then pull some support with issue information from rival strongholds, they can obtain a larger portion of the vote.  So to summarize from earlier: the experiment was set up in a format with quite similar control and treatment villages; the treatments were applied correctly; and the results do not fully support either pro or anti-clientelistic attitudes.  These three items are good indication that the results are unbiased and yet still a valid and interpretable comparison
+
+```
+
+What was the effect of the experiment on the giving of cash?
+
+```{r}
+#By considering the giving of cash as a variable, the survey considered one central element supporting theorization of clientelism. In fact, compared to the other variables in the clientelism index, receiving cash from candidate showed a positive correlation with the clientelism index, as is shown in the following plot
+
+attach(surveydat)
+plot(index,plat_inform)
+#linear regression of cash values
+abline (lm(cash~index), col="red")
+#linear regression for the other variables in the index
+abline (lm(plat_inform~index) )
+abline (lm(plat_convinc~index) )
+abline (lm(discuss_other_ethn~index) )
+abline (lm(discuss_total~index) )
+abline (lm(knows_plat~index) )
+abline (lm(qualifications~index) )
+abline (lm(country_prob~index) )
+
+#While only the cash variable dealt with vote buying, the remaining variables dealt with voter information. However, the researchers showed, that by excluding the cash variable, the results of the clientelism index are similar as the entire index.
+
+#however, after considering the cash variable 
+
+surveydat %>% group_by(treat) %>% summarize(index=mean(index))
+
+#The researchers acknowledged the possible misreporting by respondents or the infrequency of vote buying in the selected areas. As the results of the research showed a possible strategy for candidates of using of treatment campaigns in areas where they are not dominant, the experiment suggest how expending money on providing information could be cheaper than giving cash, and in consequence, an argument for information-based campaigns as a more cost-effective way of mobilizing voters than cash distribution. In the long-term, such strategy will lead to a more informed and competitive political environment, in which resources are allocated to increase participation.
+
+```
+
+Why would anyone think that a study with 24 villages ought to be a good way to learn about the
+effect of different styles of campaigning?
+
+```{r}
+
+#Experimentation involves a random procedure that ensures that every observation has the same probability of being assigned to the treatment group. As a great number of experiments took place in laboratories, conclusions tend to focus on the internal validity as, for example, control variables can be constant during the whole process. However, for political science, this scope can limit the possibilities of experiments, especially when they take place in real-world settings. 
+
+#As the experiment on Benin’s showed, alternatives to have rallies and promise targeted goods to towns can encourage people to turn out to vote, and increase the civic health of any nation. This conclusion was achieved through a field experimentation, which recognizes the local aspects of benin’s political culture, but also achieve a level of generalization by showing the effectiveness of randomization, as the villages chosen showed a similarity in terms of the demographic variables in the survey.
+
+#By considering the cumulative nature of knowledge produced through experimentation, the study of Benin’s elections could addresses the effects of introducing clientelist practices into programmatic politics.
+
+```
+
+# References
+

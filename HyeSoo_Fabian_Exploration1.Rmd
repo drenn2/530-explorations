@@ -1,0 +1,255 @@
+#commented by Hye Soo Nah and Fabian Prieto
+
+---
+title: 'Exploration 1: Description in One Dimension'
+author: "Jake Bowers"
+date: '`r format(Sys.Date(), "%B %d, %Y")`'
+output:
+  html_document:
+    fig_caption: yes
+    fig_height: 4
+    fig_width: 4
+  pdf_document:
+    fig_caption: yes
+    fig_height: 4
+    fig_width: 4
+    graphics: yes
+    latex_engine: xelatex
+graphics: yes
+mainfont: Minion Pro
+geometry: margin=1in
+fontsize: 10pt
+---
+
+<!-- Make this document using library(rmarkdown); render("exploration1.Rmd") -->
+\input{mytexsymbols}
+
+
+
+```{r include=FALSE, cache=FALSE}
+# Some customization.  You can alter or delete as desired (if you know what you are doing).
+# knitr settings to control how R chunks work.
+
+## To make the html file do
+## render("exploration1.Rmd",output_format=html_document(fig_retina=FALSE))
+## To make the pdf file do
+## render("exploration1.Rmd",output_format=pdf_document())
+
+require(knitr)
+opts_chunk$set(
+  tidy=FALSE,     # display code as typed
+  size="small",    # slightly smaller font for code
+  echo=TRUE,
+  results='markup',
+  strip.white=TRUE,
+  fig.path='figs/fig',
+  cache=FALSE,
+  highlight=TRUE,
+  width.cutoff=132,
+  size='footnotesize',
+  out.width='.9\\textwidth',
+  fig.retina=FALSE,
+  message=FALSE,
+  comment=NA)
+```
+
+
+```{r initialize,echo=FALSE}
+##First, just setup the R environment for today:
+if(!file.exists('figs')) dir.create('figs')
+
+options(SweaveHooks=list(fig=function(){
+			   par(mar=c(3.5, 3, 1.1, 0),
+			       pty="s",
+			       mgp=c(1.5,0.5,0),
+			       oma=c(0,0,0,0))},
+			 echo=function(){options(continue=" ") ##Don't show "+" prompts,
+			 options(prompt=" ")
+			 }),
+	digits=4,
+	scipen=8,
+	width=132
+	)
+options(error=function(){options(prompt="> ",continue="+ ");NULL})
+```
+
+"Brexit! UKIP! ISIL!" When your old friend calls, she seems to be yelling. Once
+she calms down, she explains: "I am in charge of Improving Civic Society
+programs for the United Nations, and have been asked to step in to help out at
+the UK Office of Social Capital." After you congratulate her on what appears to
+be a promotion she continues. "The thing is that over here in the UK, they are
+really big on numbers. I asked my staff for a simple report on the status of
+civic society in the UK before all of the recent unrest happened there, say, in
+2005, before the London Bombings. They responded with numbers. When I asked
+them to explain, I found their desks empty, their chairs knocked over, and
+their computers smashed, but their coffee cups still warm and untouched." You
+ask her about her own safety and she responds. "This is all within operational
+parameters. No worries. My problem is that I need to report to the high command
+and I don't know what the right answer is. Now I don't even have numbers. Please help. Can we hop on a
+Hangout?"
+
+She does not enable video in the Hangout. However, she begins sending you some
+code. "Here is what I have in terms of output. Can you explain to me what is
+going on?"
+
+This is a dataset on 
+```{r}
+load(url("http://jakebowers.org/Data/ho05.rda"))
+table(ho05$postbomb,useNA="ifany")
+library(dplyr)
+
+#here R filters the table to the interwieves before the bomb
+wrkdat <- ho05  %>% filter(postbomb==0)
+
+#this sums the hlphrs variable from the filtered table. The argument na.rm should be set to TRUE to have a numerical result. hlphrs (help hours) is the sum of grphrs (hours on a group) and infhrs 
+sum(wrkdat$hlphrs,na.rm = TRUE)
+
+# The dataset in the code shown above is a report on the status of civic society in the UK before and after the London Bombings. According to the table, 800 (out of 1000) participants were interviewed before the bombing and 200 after the bombing. Attached the 'dpylr' package and ran the following code. The total number of help hours of the 800 participants interviewed before the bombing, according to the 'sum' code, was 5287 hours.
+```
+
+She continues, "And then I have this from a previous meeting where they talked about `codebooks` but I don't think these were the ordinary kind of encrypted communication behind enemy lines."
+
+\begin{small}
+\begin{verbatim}
+  ### CODEBOOK
+  postbomb: 1=interviewed after the bombing, 0=interviewed before the bombing
+
+  grphrs: 6.1.1 Which of the following groups, clubs or organisations
+    have you been involved with during the last 12 months? That's anything
+    you've taken part in, supported, or that you've helped in any way, either
+    on your own or with others. Please exclude giving money and anything that
+    was a requirement of your job.
+
+    6.1.2 In the last 12 months have you given unpaid help to any groups, clubs or
+    organisations in any of the following ways?
+
+    6.1.5 Approximately how many hours have you spent helping this/these group(s),
+    club(s) or organisation(s) in the past 4 weeks?
+
+  infhrs: In the last 12 months have you done any of the following things,
+    unpaid, for someone who was not a relative?
+
+    This is any unpaid help you, as an individual, may have given to other people,
+    that is apart from any help given through a group, club or organisation. This
+    could be help for a friend, neighbour or someone else but not a relative.
+
+    6.4.4 Now just thinking about the past 4 weeks. Approximately how many hours
+    have you spent doing this kind of thing/these kind of things in the past 4
+    weeks?
+
+  hlphrs: grphrs+infhrs
+\end{verbatim}
+\end{small}
+
+She asks, "What is the best way to say how civic life was going before the bombings? What is the right answer?"
+
+
+
+```{r}
+
+# Mean for help hours before the bombing was 6.6. On average, participants had spent 6.6 hours in their previous month helping others through groups, clubs and organizations. However, taking a closer look, the outliers had skewed the average (median = 1). 
+
+summary(wrkdat$hlphrs)
+
+#However by considering 
+
+quantile (wrkdat$hlphrs,na.rm = TRUE)
+
+#or
+
+fivenum(wrkdat$hlphrs) # Tukey's five-number summary: minimum, lower-hinge, median, upper-hinge, maximum
+
+#75% of the distribution ranges between 0 and 7 hours. 
+
+#if graphed the distribution is skewed to the right like in #plot 1
+
+hlp <- unlist(wrkdat %>% dplyr::select(hlphrs) %>% filter(!is.na(hlphrs)))
+d <-density (hlp)
+plot(d)
+
+
+```
+
+
+Later, after you had worked on this a bit she calls back, "Hey. Thanks so much
+for helping! I just found this code and thought it might be useful. What do you
+think? Can you tell me what this means? Does it help me get the right answer
+about how much time people in the UK were devoting to helping each other and/or
+supporting groups? Why are there so many ways to descibe a single variable
+anyway? What is the point?  Also, are there any plots that would help me tell
+the right story about this variable?"
+
+```{r, results='hide'}
+
+#calculates the mean and discards 10% of the observations from each end
+mean(wrkdat$hlphrs,trim=.1,na.rm=TRUE)
+
+#creates a case for each person and assign the number of hours. It exclude the NA's
+hlp <- unlist(wrkdat %>% dplyr::select(hlphrs) %>% filter(!is.na(hlphrs)))
+library(psych)
+
+
+winsor.mean(hlp) # Rather than dropping the top and bottom trim percent like the previous code, the extreme values (of the top and bottom 10%?) can be replaced with values at the trim and 1- trim quantiles. Using this calculation, we can see that the winsor mean is 3.13. The winsorized mean is a useful estimator because it is less sensitive to outliers than the mean but will still give a reasonable estimate of central tendency or mean for almost all statistical models. As the sample had many outliers, this could be a better estimated time of hours for helping others before the bombings.
+
+
+# This other action returns the mean of a "winsorized" hlp. Winsorize means that data is cleaned by means of winsorization, i.e., by shrinking outlying observations to the border of the main part of the data. It is a method of censoring data by transforming the top and bottom 5% values to them  
+
+library(robustHD)
+mean(winsorize(hlp)) # However, winsorized means only work when the underlying distribution is symmetric. In this dataset, the distribution of help hours is asymmetric and thus the winsorized mean is unlikely to servne as an unbiased estimator for the mean. Therefore, by winsorizing ALL the values in 'hlp' and then calculating the mean, we can get a more accurate estimator. In this case, the mean for total help hours is 1.80. Winsorizing focus on a specific portion of the cases defining, in this case a smaller scale between those who help and those who don't, as it is shown in plot #2
+
+# At first glance, the data seems to say that people in the UK were spending 6.6 hours helping others through clubs, groups and organizations before the London bombing. However, upon closer examination, this average was distorted by the outliers who spent significantly more time in helping others than the average UK citizen. By computing means through different methods, we could obtain a more accurate and less biased observation concerning the average time people in the UK spent in helping others.
+
+plot (density.default(x=winsorize(hlp)))
+
+
+
+onestepMest <- function(x){
+	## Following http://www.psychology.mcmaster.ca/bennett/boot09/rt2.pdf
+	madn <- mad(x, constant = 1.4826) ## 1/1.4826 = .6745
+
+	# A common choice for K is 1.28. M verifies that any absolute value of each element minus the median is greater than K=1.28
+	
+  M <-  ( abs(x - median(x)) / madn )  > 1.28
+	#U is outliers greater than the median = 1 (434)
+  U <- sum( x > M)
+	#L is number of outliers tha are less than the median
+	L <- sum( x < M)
+	#B is the sum of the non-outliers (363)
+	B <- length(x) - U - L
+	#n is the number of cases in the dataset
+	n <- length(x)
+	
+	mux <- (1.28 * madn * (U-L) + B) /(n - L - U)
+	return(mux)
+}
+
+ 
+#The One step Huber M-estimator is a procedure that replace those values that are significatly different from the rest of the observation
+
+onestepMest(hlp)
+
+library(robustbase)
+
+#as the values from huberM shows, it calcules a location estimate through several iterations
+
+huberM(hlp)
+
+#  fivenum and quantile represent the quantiles (as in line 150) taking different ranges to see the distribution
+fivenum(hlp)
+quantile(hlp,seq(0,1,.1))
+
+#Robust statistics' primary goal is the development of procedures to find the structure best fitting the majority of the data.
+
+
+describe(wrkdat$hlphrs, na.rm = TRUE)
+
+
+mean(wrkdat$hlphrs, trim = .20, na.rm = TRUE) # By trimming off 20% from each end, we can see that the mean changed to 2.2 hours. 
+mean(wrkdat$hlphrs, trim = .10, na.rm = TRUE) # By trimming off 10% from each end, we can see that the mean changed to 3.3 hours. 
+
+
+```
+
+<!-- see also https://dornsife.usc.edu/labs/rwilcox/software/ and WRS:::mest  https://dornsife.usc.edu/assets/sites/239/docs/WRS2.pdf and the MASS library--->
+
+# References
