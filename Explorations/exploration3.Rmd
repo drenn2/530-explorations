@@ -1,0 +1,224 @@
+---
+title: 'Exploration 3: Description of Relationships II'
+author: 'Jake Bowers'
+date: '`r format(Sys.Date(), "%B %d, %Y")`'
+bibliography: classbib.bib
+fontsize: 10pt
+geometry: margin=1in
+mainfont: "Crimson Text"
+graphics: yes
+output:
+  html_document:
+    fig_caption: yes
+    fig_height: 4
+    fig_width: 4
+  pdf_document:
+    latex_engine: xelatex
+    fig_caption: yes
+    fig_height: 4
+    fig_width: 4
+---
+
+<!-- Make this document using library(rmarkdown); render("exploration1.Rmd") -->
+\input{mytexsymbols}
+
+
+```{r include=FALSE, cache=FALSE}
+# Some customization.  You can alter or delete as desired (if you know what you are doing).
+# knitr settings to control how R chunks work.
+
+## To make the html file do
+## render("exploration1.Rmd",output_format=html_document(fig_retina=FALSE))
+## To make the pdf file do
+## render("exploration1.Rmd",output_format=pdf_document())
+
+require(knitr)
+opts_chunk$set(
+  tidy=FALSE,     # display code as typed
+  size="small",    # slightly smaller font for code
+  echo=TRUE,
+  results='markup',
+  strip.white=TRUE,
+  fig.path='figs/fig',
+  cache=FALSE,
+  highlight=TRUE,
+  width.cutoff=132,
+  size='footnotesize',
+  out.width='.9\\textwidth',
+  fig.retina=FALSE,
+  message=FALSE,
+  comment=NA)
+```
+
+
+```{r initialize,echo=FALSE}
+##First, just setup the R environment for today:
+if(!file.exists('figs')) dir.create('figs')
+
+options(SweaveHooks=list(fig=function(){
+			   par(mar=c(3.5, 3, 1.1, 0),
+			       pty="s",
+			       mgp=c(1.5,0.5,0),
+			       oma=c(0,0,0,0))},
+			 echo=function(){options(continue=" ") ##Don't show "+" prompts,
+			 options(prompt=" ")
+			 }),
+	digits=4,
+	scipen=8,
+	width=132
+	)
+options(error=function(){options(prompt="> ",continue="+ ");NULL})
+```
+
+"Ok, so you helped us solve an important problem in our UK office. However, my staff is now having another debate. This time they are saying that the relationship between age and support for Trump is non-linear. Right now some are yelling 'Is not!' and others are yelling 'Is too!'. Now, I don't understand why anyone would care about a non-linear relationship. Isn't a linear relationship good enough? What does non-linearity gain us? Can you explain to me in substantive terms what a non-linear relationship might teach us versus a linear one? (I also think that this question and the conflict here at my staff table cannot be this simple.)"
+
+"I found some data that might bear on this question."
+
+```{r}
+download.file("http://jakebowers.org/Data/ANES/anes_pilot_2016_csv.zip",destfile="anespilot2016.csv.zip")
+unzip("anespilot2016.csv.zip")
+anespi16<-read.csv("anes_pilot_2016.csv",as.is=TRUE,strip.white=TRUE)
+```
+
+"Oh. Also, before I run, I can tell you that the two sides are now yelling about 'global' versus 'local' smoothers. And I don't even hear them talking about the kinds of questions you've talked with me about in regards overly influential points and methods for handling them. I know that if I don't go back with at least one global but non-linear smoothed solution, one global linear smoothed solution, and two local non-linear smoothed solution, I'm going to look silly and they will ignore me, even though I'm the leader of this team! I need to act with authority, so I need to be able to say why I made the choices I made and why I avoided other choices. I will need to explain the strengths and weakness of my choices, but to defend one choice above others in order to act decisively in this cyber-theater. Help!"
+
+Our friend’s staff had a debate on whether the relationship between age and support for Trump is non-linear or not. She is using data from ANES 2016 Pilot Study. The codebook of questionnaire gives us detail on the data. Among 594 variables, we are concerned with “fttrump” and “birthyr.”
+
+First variable deals with feeling thermometer for Trump, which asks a question of “How would you rate Donald Trump?” Feeling thermometer measures how one feels toward a political leader from scale 0 to 100 degrees; ratings between 0 and 50 mean unfavorable feeling and ratings between 50 and 100 mean favorable feeling toward the person. The summary of this variable tells us that the minimum value was 0, and the maximum value was 998. We noticed that there are three people who gave rating of 998, which seems odd since the range of the feeling thermometer was from 0 to 100. We tried to figure out where this number came from by reviewing who these people are, so that we might understand whether they were technical errors or they showed genuine support for Trump. The 321st person chose Hillary Clinton over Donald Trump for variable [vote16dt]. The 618th person chose Marco Rubio over Donald Trump for variable [repcand]. The 1066th person chose ‘someone else’ over Donald Trump for variable [vote16dt]. Observing these data, we can presume that their choice of ‘998’ was probably a technical error rather than an avid support for Trump. Therefore, we will eliminate the three values from our dataset by creating a new dataset called “trump.”
+```{r}
+names(anespi16)
+table(anespi16$fttrump)
+summary(anespi16$fttrump)
+trump <- subset(anespi16, anespi16$fttrump<=100)
+tr <- trump$fttrump
+```
+
+Second variable is the age, which can be found in the form of birth year. The question asked was “In what year were you born?” There are two ways we can use this variable in our analysis: one is to create another variable calculating the actual age, and the other is to use the birth year data and interpret them after the analysis. We will choose the latter. The summary of this variable tells us that the minimum value was 1921 and the maximum value was 1997. If we translate this into age, we have 19 to 95 year-old people as our range.
+
+```{r}
+table(anespi16$birthyr)
+summary(anespi16$birthyr)
+br <- trump$birthyr 
+
+```
+
+If the relationship between the two can be explained well by the linear regression, then there is no need to debate whether the relationship is non-linear or not. In order to see why our friend’s staff has such a fierce debate, we will try linear regression first.
+
+```{r}
+lmlinear <- lm(tr ~ br)
+summary(lmlinear)
+plot(br, tr)
+abline(br, tr)
+```
+
+Summary of the linear regression gives us the coefficient of -0.37231 and p-value of 1.664e-09. This seems like a very satisfying explanation of the two variables. It even gives us a nice line across the plot. However, even though the numbers give us a good explanation, it does make us wonder whether the line really represents the data. If a good fit is defined as the one where most of the data are positioned close to the line, the values on the plot seems scattered. Therefore, we should pay more attention to understanding the distribution of the fttrump data. We know that there are several ways to describe a variable, one of them is by drawing a histogram. Looking at the histogram, we see a highly skewed distribution. In detail, 60% of the respondents rated Donald Trump less than 50. On the other hand, there are more people who rated Trump higher than 90 compared to those who rated him between 80 and 90. This phenomenon can also be found in the plot we saw earlier, where the values of fttrump are polarized. It is true that we can draw a line with a negative slope across the plot because if we look at the two ends of the x-axis, the older generation tends to support Trump more while the younger generation tends to support Trump less.
+
+```{r}
+hist(tr)
+quantile(tr, seq(0,1,.1))
+
+```
+
+If we look at the interquartile range, which is the 1st quartile subtracted from the 3rd quartile, the values seem scattered, if not polarized. If we try the linear regression within the interquartile range, the coefficient is -0.04727 and the p-value is 0.7667. Compared to the earlier regression, the absolute value of the slope is much lower, and the p-value is much bigger. Moreover, the plot of the two variables within the range shows us that the values are very scattered.
+
+```{r}
+age <- subset(trump, trump$birthyr<=1982)
+age1 <- subset(age, age$birthyr>=1954)
+tru1 <- age1$fttrump
+by1 <- age1$birthyr
+lm1 <- lm(tru1 ~ by1)
+summary(lm1)
+plot(by1, tru1)
+abline(lm1)
+
+```
+Therefore, we would like to suggest our friend that the relationship between fttrump and birthyr cannot be best described with a linear model. Describing the data simply with a negative relation between the two may be an easier explanation, but it is too much to say that there is a strong relationship among most of the values.
+
+This data is a good example of showing the limits of a linear model. Linear model can give us an easy understanding of the two variables, but this easy understanding is achieved by setting several highly restrictive assumptions that are often violated in practice. One of the assumptions is the linear assumption. The linear assumption implies that a change in the dependent variable due to a one-unit change in the independent variable is constant, regardless of the value of the independent variable. In practice, it is unlikely that a change in one unit would always generate the same amount of change. Not many relationships between the two variables can be represented by a single line. If we discard the linear assumption, we might incorporate more data into the line and strengthen the explanatory power of the model. However, we should also be careful not to blindly believe that non-linear regression is superior to linear regression. Even if an extremely complicated function incorporates most of the data, the purpose of using statistics is to show a relationship and understand it, rather than showing the raw data itself. Therefore, non-linear model can be less intuitive to understand. In addition, p-values are impossible to calculate for the independent variables, and confidence intervals may or may not be calculable.
+
+Our friend also talked about different kinds of ways to handle the data: one global but nonlinear smoothed solution, one global linear smoothed solution, and two local non-linear smoothed solutions.
+
+Before we discuss each solution, we would like to discuss the advantages and disadvantages of using global and local. The main difference between using a global and local is whether we use all the observations in the data to run a regression (global), or we run separate regression model for each value of the input variable. We can choose either global or local by controlling the span. The larger the span is(closer to 1), it includes more datapoints (global fit). The smaller the span is(closer to 0), it runs each regression among closely distributed datapoints (local fit).
+
+Now let’s talk about the advantage and disadvantages of the global and local fits. Global fit uses all the observed values. The advantage of this is that it is simple (compared to local regression with many wiggles), and thus easier to understand/explain the relationship between variables, and to make predictions of the relationship. The disadvantage is that the globally fit line is more sensitive (more influenced by) to the observed value that are distant to the line.
+
+In order to conduct local regression, we fit a different model separately at every target point(x0). This is done using only the observations close to the target point to fit the model. It constructs each regression so that it puts more weight on observed points that are close. We need to assign a weight to each observation in each “neighborhood” (determined by controlling the span), so that the observed value furtherest to target point has weight zero and the closest has the highest weight. By using this method, we can smooth the line and can reduce the noise, thus draw a better fitted line of the data. In this way, we can also draw a line that is less sensitive to observed values that are distant. The disadvantage of a local regression is that it may have many wiggles and this can make it hard to explain the relationship between the observed variables. It becomes difficult to understand the relationship and to make predictions of the variable.
+
+Now we will discuss the four solutions. First, we need to clarify the meaning of the global linear smoothed solution. The global linear smoothed solution might be coming from the misunderstanding of the friend. We will adjust the suggested ‘global linear smoothed solution’ to ‘global linear solution’ and compare four methods. As we have run a linear regression above, we got a straight fitted line which does not need smoothing. The result shows that there is a negative relationship between two variables. This means that, as the age of voters increase, the support for Trump will decrease. The residual standard error is 36 and the degrees of freedom (DF) is 1195.
+
+```{r}
+fit5<-lm(tr~br)
+plot(br, tr)
+abline(fit5)
+summary(fit5)
+```
+
+Second, we move on to global non-linear smoothed solution. To fit a smooth curve to the dataset, We take the approach of creating smoothing splines. Smoothing splines builds a natural spline model with knots at every unique observations. The goal of a smoothing spline funciton is to minimize the sum of squared errors. We can control the flexibility of the non-linear fit by controlling the parameter λ. The larger it is, the smoother the function. Using smoothing lines has strong points as it could make a perfect fit to the data by fitting a spline with knots at every data point. However, fitting a spline with knots on every observations could result in a curve that is very noisy since it follows every detail of the data. This would make learning the relationship between variables difficult and to find a general trend and make predictions based on the data.
+
+In order to generate a smoothing spline we need to decide where to put the knots. Here, we divide ‘birth year’ data by quantiles. The “attr()” argument will give us the 25%, 50%, and 75% quantile values, which are 1954, 1968, and 1982.
+
+```{r}
+trump <- subset(anespi16, anespi16$fttrump<=100)
+tr <- trump$fttrump
+br <- trump$birthyr
+library(splines)
+attr(bs(br, df=6),"knots")
+fit=lm(tr~bs(br,knots=c(1954,1968,1982)), data=trump)
+brlims=range(br)
+br.grid=seq(from=brlims[1], to=brlims[2])
+pred=predict(fit, newdata=list(br=br.grid), se=T)
+plot(br, tr, col="gray")
+lines(br.grid,pred$fit)
+plot(br, tr, xlim=brlims, cex=.5, col="darkgrey")
+title("Smoothing Spline")
+fit=smooth.spline(br,tr,df=16)
+fit2=smooth.spline(br, tr, cv=TRUE)
+fit2$df
+lines(fit, col="red")
+lines(fit2, col="blue")
+```
+
+Lastly, we move to local non-linear smoothed line. We use the loess function. Here we used two kinds of local non-linear smoothed solutions by using different spans. Span s ‘controls the flexibility of the nonlinear fit.’ If we have small s, we can see more wavy and curved fitted line. If s is large, we can have more smooth line. We use two values of span, 0.2 and 0.7, to see the variation between these two values. The summaries of two results show that both methods show similar Residual Standard Error, 36 and 35.9, but the difference is large with the degrees of freedom. For span=0.2, the DF is 17.12, while it is 5.27 with span=0.5. This shows that using a larger span (0.5) could make the fitted line more flexible, but we get less degree of freedom.
+
+```{r}
+plot (br, tr, xlim=brlims, cex=.5, col="darkgrey")
+title("Local Regression")
+fit3=loess(tr~br, span=.2, data=trump)
+fit4=loess(tr~br, span=.7, data=trump)
+lines(br.grid, predict(fit3,data.frame(br=br.grid)), col="red", lwd=2)
+lines(br.grid, predict(fit4,data.frame(br=br.grid)), col="blue", lwd=2)
+legend("topright", legend=c("Span=0.2","Spand=0.7"), col=c("red","blue"),lty=1, lwd=2, cex=.8)
+```
+
+
+
+To compare and choose the best measurement for our analysis, we will compare the squared residuals of the five different methods used above. As we talked about the squared error last week, the squared residuals help us get the information of how much the estimated line fit the spread of overall data.
+
+We are getting Squared Residuals for the five different measures. First, we use ‘residuals()’ argument for all the methods.
+
+```{r}
+efit1 <-residuals(fit5)
+efit2 <-residuals(fit)
+efit3 <- residuals(fit2)
+efit4 <- residuals(fit3)
+efit5 <- residuals (fit4)
+
+```
+
+Summary shows data at different standard points, including minimum and maximum values, median, mean, and 1st and 3rd quantiles. To generate a general comparing point, we will use the sum of squared residuals for all the methods.
+
+```{r}
+summary(efit1)
+summary(efit2)
+summary(efit3)
+summary(efit4)
+summary(efit5)
+sum(efit1^2)
+sum(efit2^2)
+sum(efit3^2)
+sum(efit4^2)
+sum(efit5^2)
+
+```
+
+In conclusion, we would like to suggest that relationship between the two variables, fttrump and birthyr, can be best explained with local non-linear model. We demonstrated the five methods to explain the relationship. In order to decide which method best explains our model, we thought calculating the sum of squared residuals would be an appropriate criterion, because the less the sum of squared residuals is, the more data is explained by the model. Sum of the squared residuals were 1548091, 1529715, 1540791, 1528142, and 1538821. The fourth model gives us the smallest sum of the squared residuals. Therefore, we choose to use a local non-linear model with a span of 0.2 as a best-fit model.
